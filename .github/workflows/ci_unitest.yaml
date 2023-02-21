@@ -1,0 +1,26 @@
+name: Go test to run unit tests
+
+on:
+  push:
+    paths:
+      - "go.sum"
+      - "go.mod"
+      - "**.go"
+    branches: [ main ]
+
+jobs:
+  unit_test:
+    strategy:
+      matrix:
+        go-version: [ 1.19.x, 1.16.x, 1.13.x ]
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    - name: install Go
+      uses: actions/setup-go@v2
+      with:
+      go-version: ${{ matrix.go-version }}
+    - name: Test
+      run: go test -v ./...

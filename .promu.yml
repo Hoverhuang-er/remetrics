@@ -1,0 +1,12 @@
+go:
+  version: 1.19
+repository:
+  path: github.com/Hoverhuang-er/remetrics
+build:
+  binaries:
+    - name: remetrics
+      path: cmd/remetrics
+  flags: -a -tags netgo
+crossbuild:
+  platforms:
+    - linux/amd64
