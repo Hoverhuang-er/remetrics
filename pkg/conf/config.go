@@ -10,4 +10,5 @@ type PushGW struct {
 }
 
 type Input struct {
+	DataSize []int
 }

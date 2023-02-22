@@ -25,7 +25,7 @@ type Pusher struct {
 	CoroutinePoolBufferSize int
 	CoroutinePoolSize       int
 	PushGatewayAddr         string
-	MetricsPath             string
+	metricsPath             string
 	PushJobName             string
 }
 
@@ -95,7 +95,7 @@ func (p *Pusher) buildMetrics(ctx context.Context, svc string) error {
 	if err != nil {
 		return err
 	}
-	p.MetricsPath = fmt.Sprintf("%s", regPath.ReplaceAllString(svc, "_"))
+	p.metricsPath = fmt.Sprintf("%s", regPath.ReplaceAllString(svc, "_"))
 	return nil
 }
 
@@ -103,8 +103,8 @@ func (p *Pusher) buildPromGaugeVec(ctx context.Context, keys []string) *promethe
 	return prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace:   "amscreen",
 		Subsystem:   "dynatrace",
-		Name:        p.MetricsPath,
-		Help:        fmt.Sprintf("The job use for %s by collector %s", p.MetricsPath, "amscreen"),
+		Name:        p.metricsPath,
+		Help:        fmt.Sprintf("The job use for %s by collector %s", p.metricsPath, "amscreen"),
 		ConstLabels: nil,
 	}, keys)
 }

@@ -16,6 +16,8 @@ import (
 	"context"
 	"errors"
 	"github.com/Hoverhuang-er/remetrics/pkg/conf"
+	"github.com/Hoverhuang-er/remetrics/pkg/pusher"
+	"os"
 	"sync"
 )
 
@@ -38,20 +40,28 @@ func (rt *Remetrics) InitLibs(ctx context.Context, r Remetrics) error {
 	if checkCfg == nil {
 		return errors.New("config is nil")
 	}
+	rt.InputCfg = checkCfg
 	return nil
 }
 
 // Relable is a function that rebuild metrics labels from metrcis path to data_lable
-func (rt *Remetrics) Relable(ctx context.Context, r Remetrics) (bool, error) {
+func (rt *Remetrics) Relable(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
 // PusherV3 is a function that push metrics to prometheus with coroutines pool
-func (rt *Remetrics) PusherV3(ctx context.Context, r Remetrics, idx int, wg *sync.WaitGroup) (bool, error) {
-	return false, nil
+func (rt *Remetrics) PusherV3(ctx context.Context) error {
+	ph := pusher.Pusher{
+		EnableCoroutinesPool:    rt.InputCfg.UseConroutinePool,
+		CoroutinePoolBufferSize: 10,
+		CoroutinePoolSize:       cap(rt.InputData.DataSize),
+		PushGatewayAddr:         rt.InputCfg.Pushgateway.GwAddr,
+		PushJobName:             os.Getenv("PUSH_JOB_NAME"),
+	}
+	return ph.PushMetrics(ctx)
 }
 
 // CheckPromUp is a function that check prometheus is up or not
-func (rt *Remetrics) CheckPromUp(ctx context.Context, r Remetrics) (bool, error) {
+func (rt *Remetrics) CheckPromUp(ctx context.Context) (bool, error) {
 	return false, nil
 }
