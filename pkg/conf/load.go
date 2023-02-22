@@ -1,30 +1,21 @@
 package conf
 
 import (
-	"encoding/json"
 	toml "github.com/BurntSushi/toml"
-	yaml "gopkg.in/yaml.v3"
 	"log"
 	"os"
 )
 
 func LoadCfg() *Config {
 	var cfg Config
-	if d, err := PathExists("config.yaml"); err == nil {
-		if err := yaml.Unmarshal(d, &cfg); err != nil {
-			log.Fatal(err)
-			return nil
-		}
-	} else if d2, err := PathExists("config.json"); err == nil {
-		if err := json.Unmarshal(d2, &cfg); err != nil {
-			log.Fatal(err)
-			return nil
-		}
-	} else if d3, err := PathExists("config.toml"); err == nil {
-		if err := toml.Unmarshal(d3, &cfg); err != nil {
-			log.Fatal(err)
-			return nil
-		}
+	d3, err := PathExists("config.toml")
+	if err != nil {
+		log.Printf("load config.toml failed, %v", err)
+		return nil
+	}
+	if err := toml.Unmarshal(d3, &cfg); err != nil {
+		log.Printf("unmarshal config.toml failed, %v", err)
+		return nil
 	}
 	return &cfg
 }

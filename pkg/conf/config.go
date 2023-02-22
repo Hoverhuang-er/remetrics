@@ -1,7 +1,8 @@
 package conf
 
 type Config struct {
-	Pushgateway PushGW `yaml,toml,json:"pushgateway"`
+	Pushgateway       PushGW `yaml,toml,json:"pushgateway"`
+	UseConroutinePool bool   `yaml,toml,json:"use_conroutine_pool"`
 }
 
 type PushGW struct {
