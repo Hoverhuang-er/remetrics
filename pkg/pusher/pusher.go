@@ -2,11 +2,18 @@ package pusher
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	grt "github.com/hashicorp/go-retryablehttp"
 	"github.com/panjf2000/ants/v2"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/push"
 	"log"
+	"net/http"
+	"net/http/httptrace"
 	"regexp"
 	"sync"
+	"time"
 )
 
 type PusherFunc interface {
@@ -19,7 +26,35 @@ type Pusher struct {
 	CoroutinePoolSize       int
 	PushGatewayAddr         string
 	MetricsPath             string
+	PushJobName             string
 }
+
+var (
+	// HTTP Client Trace and Conn reuse
+	clientTrace = &httptrace.ClientTrace{
+		GotConn: func(info httptrace.GotConnInfo) {
+			log.Printf("GotConn: %v reused", info)
+		},
+	}
+	// Rebuild HTTP Client with GRT
+	grtc = func() *grt.Client {
+		c := grt.NewClient()
+		c.HTTPClient = &nhc
+		c.RetryWaitMax = 5 * time.Second
+		c.RetryWaitMin = 1 * time.Second
+		c.RetryMax = 1
+		return c
+	}
+	// Create HTTP Client
+	nhc = http.Client{
+		Timeout: 15 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 30,
+			TLSClientConfig: &tls.Config{
+				MaxVersion:         tls.VersionTLS13,
+				InsecureSkipVerify: true,
+			}}}
+)
 
 func (p *Pusher) PushMetrics(ctx context.Context) error {
 	// TODO: push metrics to prometheus
@@ -60,6 +95,25 @@ func (p *Pusher) buildMetrics(ctx context.Context, svc string) error {
 	if err != nil {
 		return err
 	}
-	p.MetricsPath = fmt.Sprintf("dynatrace_%s_", regPath.ReplaceAllString(svc, "_"))
+	p.MetricsPath = fmt.Sprintf("%s", regPath.ReplaceAllString(svc, "_"))
 	return nil
+}
+
+func (p *Pusher) buildPromGaugeVec(ctx context.Context, keys []string) *prometheus.GaugeVec {
+	return prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace:   "amscreen",
+		Subsystem:   "dynatrace",
+		Name:        p.MetricsPath,
+		Help:        fmt.Sprintf("The job use for %s by collector %s", p.MetricsPath, "amscreen"),
+		ConstLabels: nil,
+	}, keys)
+}
+
+func (p *Pusher) DoPush(ctx context.Context, clo prometheus.Collector) error {
+	ctx = httptrace.WithClientTrace(ctx, clientTrace)
+	ph := push.New(p.PushGatewayAddr, p.PushJobName)
+	ph.PushContext(ctx)
+	ph.Collector(clo)
+	ph.Client(grtc().HTTPClient)
+	return ph.Push()
 }
